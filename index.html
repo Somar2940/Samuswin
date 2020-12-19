@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+	<meta charset="utf-8">
+	<title>LunchMarker</title>
+	<link href="./base.css" rel="stylesheet" type="text/css">
+    <style type="text/css">
+      html { height: 100% }
+      body { height: 100%; margin: 0px; padding: 0px }
+      #map { height: 100% }
+    </style>
+
+    <script src="http://maps.googleapis.com/maps/api/js?key=AIzaSyDqRgO2uOFDR9zmRXPvPSeFeXHY5ACqgTE"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+    <script src='https://use.fontawesome.com/releases/v5.0.13/js/all.js'></script>
+    <script src="markerwithlabel.js"></script>
+
+    <script type="text/javascript">
+
+    var map;
+    var MarkerArray = new google.maps.MVCArray();
+    var MarkerArray2 = new google.maps.MVCArray();
+    let tmpLat = [32.806186];
+    let tmpLng = [130.705834];
+
+    function init() {
+			var flag=0;
+			var defaultLatLng = new google.maps.LatLng(32.806186, 130.705834);
+			var opts = {
+        	zoom: 10,
+        	mapTypeId: google.maps.MapTypeId.ROADMAP,
+        	center: defaultLatLng
+			};
+				map = new google.maps.Map(document.getElementById("map"), opts);
+
+				let defaultmarkerOptions = {
+					map: map,
+	    		position: defaultLatLng,
+					icon: "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+	  		};
+				var marker = new google.maps.Marker(defaultmarkerOptions);
+				MarkerArray.push(marker);
+
+    		google.maps.event.addListener(map, 'click', function(event){
+					mylistener(event,marker,tmpLat,tmpLng)
+				});
+    }
+
+    function mylistener(event,marker,tmpLat,tmpLng) {
+			ClearAllIcon();
+			let markerOptions = {
+	        map: map,
+	        position: event.latLng,
+					icon: "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
+	    };
+	    var marker = new google.maps.Marker(markerOptions);
+			MarkerArray.push(marker);
+			map.setCenter(event.latLng);
+
+			var lat = event.latLng.lat();
+			var lng = event.latLng.lng();
+
+			var disLat = tmpLat[tmpLat.length - 1] - lat;
+			var disLng = tmpLng[tmpLng.length - 1] - lng;
+			var distance = Math.sqrt((disLat*disLat)+(disLng*disLng));
+
+			if (distance>=0.18) {
+				map.setZoom(10);
+			}
+			else if (distance>=0.09) {
+				map.setZoom(11);
+			}
+			else if (distance>=0.036) {
+				map.setZoom(12);
+			}
+			else if (distance>=0.018) {
+				map.setZoom(13);
+			}
+			else if (distance>=0.009) {
+				map.setZoom(14);
+			}
+			else if (distance>=0.0036) {
+				map.setZoom(15);
+			}
+			else if (distance>=0.0018) {
+				map.setZoom(17);
+			}
+
+    	//JSONデータ取得 日本語で天気名を表示したいのでlang=ja　として日本語表記データを取得
+    	$.post("http://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lng + "&appid=6903ae865e2cbb00a684756a5e07bf42&lang=ja&units=metric",
+      	function(json){
+        	$("#weather").html(json.weather[0].description);  //天気を取得
+        	$("#humidity").html(json.main.humidity);  //湿度を取得
+        	$("#temp").html(Math.round(json.main.temp));  //気温を取得　℃に変換
+
+        	//天気に応じた天気アイコンを表示させる
+        	switch (json.weather[0].main){
+          	case 'Clouds':
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/04d.png' >");
+            	break;
+          	case 'Snow':
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/13d.png' >");
+            	break;
+          	case 'Rain':
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/09d.png' >");
+            	break;
+          	case 'Clear':
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/01d.png' >");
+            	break;
+          	case 'Fog':
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/50d.png' >");
+            	break;
+          	case 'Mist':
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/50n.png' >");
+            	break;
+          	case 'Haze':
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/50d.png' >");
+            	break;
+          	default:
+            	$("#weatherMark").html("<img src='http://openweathermap.org/img/w/01n.png' >");
+          }
+        }
+      );
+			tmpLat.push(lat);
+			tmpLng.push(lng);
+    }
+		function ClearAllIcon() {
+			MarkerArray.forEach(function (marker, idx) { marker.setMap(null); });
+		}
+		function ClearAllIcon2() {
+			MarkerArray2.forEach(function (marker2, idx) { marker2.setMap(null); });
+		}
+
+		async function Search() {
+			var strArray = [];
+			map.setZoom(15);
+			ClearAllIcon2();
+      const res = await fetch("https://api.gnavi.co.jp/RestSearchAPI/v3/?keyid=c75c1a14ff8a4c2a1db30a2acdd9e608&latitude="+tmpLat[tmpLat.length - 1]+"&longitude="+tmpLng[tmpLng.length - 1]+"&range=5");
+      const users = await res.json();
+      const rest = users.rest;
+			for (var i = 0; i < 10; i++) {
+				var dstrkey = 'str' + i;
+				document.getElementById(dstrkey).innerHTML = " "
+			}
+      Object.keys(rest).map(key => {
+				//document.write('key:' + key + '　店舗名:'+ rest[key]["name"]+'　緯度経度:' + rest[key]["latitude"] +' , '+ rest[key]["longitude"] + "<br>\n");
+				//document.write(rest[key]["longitude"] + "<br>\n");
+				var shopLatLng = new google.maps.LatLng(rest[key]["latitude"], rest[key]["longitude"]);
+				var shopnum = '店舗'+(parseInt(key,10)+1);
+				var marker2 = new MarkerWithLabel({
+					map:map,
+					position:shopLatLng,
+					labelContent:shopnum,
+					labelAnchor: new google.maps.Point(24, 0),
+					labelClass: 'labels',
+					labelStyle: {opacity: 0.8}
+				});
+				/* let markerOptions2 = {
+		        map: map,
+		        position: shopLatLng,
+						icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+		    };
+		    var marker2 = new google.maps.Marker(markerOptions2); */
+				MarkerArray2.push(marker2);
+
+				var str = '[' + (parseInt(key,10)+1) + '] 店舗名 : ' + rest[key]["name"] + '</br>&nbsp;&nbsp;&nbsp;カテゴリー : ' + rest[key]["category"];
+				strArray.push(str);
+				var strkey = 'str' + key;
+				document.getElementById(strkey).innerHTML = strArray[key];
+			});
+    }
+
+    </script>
+  </head>
+
+  <body onload="init()">
+		<div id="header">
+			<img src="./foodimage.jpg">
+			<div class="headertitle">Lunch Marker&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;：)</div>
+		</div>
+
+		<div id="weatherMain">
+    	<h2 id="weathertitle">選択地点の天気</h2>
+			<div id="upperweatherparts">
+				<p class="weatherparts">気温　<span id = "temp"  class="bold"></span>　℃</p>
+  			<p class="weatherparts">湿度　<span id = "humidity" class="bold"></span>　% <br /></p>
+			</div>
+    	<p class="weatherparts"><span id = "weather" class="bold"></span></p>
+    	<p class="weatherparts"><span id = "weatherMark" class="bold"></span></p>
+    	<p id="icon" class="weatherparts"></p>
+		</div>
+
+		<div id="resinfo">
+			<div style="text-align: center; margin-top: 20px; margin-bottom:20px;">
+				<button type="button" onclick="Search()">周辺店舗検索</button>
+			</div>
+			<p class="shopparts"><span id = "str0"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str1"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str2"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str3"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str4"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str5"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str6"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str7"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str8"  class="bold"></span></p>
+			<p class="shopparts"><span id = "str9"  class="bold"></span></p>
+
+		</div>
+
+    <div id="map" style="height: 500px;"></div>
+
+  </body>
+</html>
